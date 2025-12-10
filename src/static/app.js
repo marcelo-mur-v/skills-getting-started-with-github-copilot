@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <p class="availability"><strong>Availability:</strong> ${spotsLeft} spots left</p>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -52,8 +52,65 @@ document.addEventListener("DOMContentLoaded", () => {
           details.participants.forEach((p) => {
             const li = document.createElement("li");
             li.className = "participant-item";
-            li.textContent = p;
+
+            // participant email text
+            const span = document.createElement("span");
+            span.className = "participant-email";
+            span.textContent = p;
+
+            // remove button
+            const btn = document.createElement("button");
+            btn.className = "participant-remove";
+            btn.type = "button";
+            btn.title = `Remove ${p}`;
+            btn.innerHTML = "✖";
+
+            // Assemble li
+            li.appendChild(span);
+            li.appendChild(btn);
             participantsList.appendChild(li);
+
+            // Remove handler
+            btn.addEventListener("click", async () => {
+              if (!confirm(`Remove ${p} from ${name}?`)) return;
+              btn.disabled = true;
+              try {
+                const res = await fetch(
+                  `/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(p)}`,
+                  { method: "DELETE" }
+                );
+                const data = await res.json();
+                if (res.ok) {
+                  // remove list item
+                  li.remove();
+
+                  // update availability display (increase by 1)
+                  const availEl = activityCard.querySelector('.availability');
+                  if (availEl) {
+                    const m = availEl.textContent.match(/(\d+)/);
+                    if (m) {
+                      const cur = parseInt(m[1], 10);
+                      availEl.textContent = `Availability: ${cur + 1} spots left`;
+                    }
+                  }
+
+                  // if no participants left, show info
+                  if (participantsList.children.length === 0) {
+                    const info = document.createElement('p');
+                    info.className = 'info';
+                    info.textContent = 'No participants yet.';
+                    participantsSection.appendChild(info);
+                  }
+                } else {
+                  alert(data.detail || 'Failed to remove participant');
+                  btn.disabled = false;
+                }
+              } catch (err) {
+                console.error('Error removing participant:', err);
+                alert('Failed to remove participant');
+                btn.disabled = false;
+              }
+            });
           });
         } else {
           const empty = document.createElement("p");
